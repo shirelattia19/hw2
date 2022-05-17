@@ -60,7 +60,13 @@ def part2_optim_hp():
     # TODO: Tweak the hyperparameters to get the best results you can.
     # You may want to use different learning rates for each optimizer.
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    wstd, lr_vanilla, lr_momentum, lr_rmsprop, reg, = (
+        0.01,
+        0.03,
+        0.0025,
+        0.00015,  #0.00005->35.3, 0.00008->35.8,  0.0001->35.9,0.0003->32.7, 0.0008->10.7,0.001->26,
+        0.01,
+    )
     # ========================
     return dict(
         wstd=wstd,
@@ -79,7 +85,10 @@ def part2_dropout_hp():
     # TODO: Tweak the hyperparameters to get the model to overfit without
     # dropout.
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    wstd, lr, = (
+        0.01,
+        0.001,
+    )
     # ========================
     return dict(wstd=wstd, lr=lr)
 
@@ -138,7 +147,10 @@ def part3_arch_hp():
     out_activation = "none"  # activation function to apply at the output layer
     # TODO: Tweak the MLP architecture hyperparameters.
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    n_layers = 10
+    hidden_dims = 10
+    activation = 'tanh'
+    out_activation = 'sigmoid'
     # ========================
     return dict(
         n_layers=n_layers,
@@ -160,7 +172,8 @@ def part3_optim_hp():
     #    What you returns needs to be a callable, so either an instance of one of the
     #    Loss classes in torch.nn or one of the loss functions from torch.nn.functional.
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    loss_fn = torch.nn.CrossEntropyLoss()  # One of the torch.nn losses
+    lr, weight_decay, momentum = 0.001, 0.99, 0.0025  # Arguments for SGD optimizer
     # ========================
     return dict(lr=lr, weight_decay=weight_decay, momentum=momentum, loss_fn=loss_fn)
 

@@ -3,7 +3,7 @@ import os
 import torch
 import torchvision
 
-from hw2 import layers, optimizers, training
+from hw2 import layers, optimizers, training, answers
 import torch
 import unittest
 
@@ -15,6 +15,7 @@ import unittest
 import torch
 import torchvision
 import torchvision.transforms as tvtf
+from cs236781.plot import plot_fit
 
 test = unittest.TestCase()
 
@@ -192,3 +193,72 @@ def test_part2_trainer_layer():
         best_acc = res.accuracy if res.accuracy > best_acc else best_acc
 
     test.assertGreaterEqual(best_acc, 98)
+
+
+batch_size = 50
+max_batches = 100
+in_features = 3 * 32 * 32
+num_classes = 10
+data_dir = os.path.expanduser('~/.pytorch-datasets')
+ds_train = torchvision.datasets.CIFAR10(root=data_dir, download=True, train=True, transform=tvtf.ToTensor())
+ds_test = torchvision.datasets.CIFAR10(root=data_dir, download=True, train=False, transform=tvtf.ToTensor())
+dl_train = torch.utils.data.DataLoader(ds_train, batch_size, shuffle=False)
+dl_test = torch.utils.data.DataLoader(ds_test, batch_size//2, shuffle=False)
+# Define a function to train a model with our Trainer and various optimizers
+
+def train_with_optimizer(opt_name, opt_class, fig):
+    torch.manual_seed(seed)
+
+    # Get hyperparameters
+    hp = answers.part2_optim_hp()
+    hidden_features = [128] * 5
+    num_epochs = 10
+
+    # Create model, loss and optimizer instances
+    model = layers.MLP(in_features, num_classes, hidden_features, wstd=hp['wstd'])
+    loss_fn = layers.CrossEntropyLoss()
+    optimizer = opt_class(model.params(), learn_rate=hp[f'lr_{opt_name}'], reg=hp['reg'])
+
+    # Train with the Trainer
+    trainer = training.LayerTrainer(model, loss_fn, optimizer)
+    fit_res = trainer.fit(dl_train, dl_test, num_epochs, max_batches=max_batches)
+
+    fig, axes = plot_fit(fit_res, fig=fig, legend=opt_name)
+    return fig
+
+def test_part2_fit():
+    # Define a larger part of the CIFAR-10 dataset (still not the whole thing)
+
+    dl_train = torch.utils.data.DataLoader(ds_train, batch_size, shuffle=False)
+    dl_test = torch.utils.data.DataLoader(ds_test, batch_size // 2, shuffle=False)
+    fig_optim = None
+    fig_optim = train_with_optimizer('vanilla', optimizers.VanillaSGD, fig_optim)
+
+def test_part2_rms():
+    fig_optim = None
+    fig_optim = train_with_optimizer('rmsprop', optimizers.RMSProp, fig_optim)
+    fig_optim
+
+def test_dropout():
+    from hw2.grad_compare import compare_layer_to_torch
+
+    # Check architecture of MLP with dropout layers
+    mlp_dropout = layers.MLP(in_features, num_classes, [50] * 3, dropout=0.6)
+    print(mlp_dropout)
+    test.assertEqual(len(mlp_dropout.sequence), 10)
+    for b1, b2 in zip(mlp_dropout.sequence, mlp_dropout.sequence[1:]):
+        if str(b1).lower() == 'relu':
+            test.assertTrue(str(b2).startswith('Dropout'))
+    test.assertTrue(str(mlp_dropout.sequence[-1]).startswith('Linear'))
+
+    # Test end-to-end gradient in train and test modes.
+    print('Dropout, train mode')
+    mlp_dropout.train(True)
+    for diff in compare_layer_to_torch(mlp_dropout, torch.randn(500, in_features)):
+        test.assertLess(diff, 1e-3)
+
+    print('Dropout, test mode')
+    mlp_dropout.train(False)
+    for diff in compare_layer_to_torch(mlp_dropout, torch.randn(500, in_features)):
+        test.assertLess(diff, 1e-3)
+

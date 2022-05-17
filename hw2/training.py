@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 
 from cs236781.train_results import FitResult, BatchResult, EpochResult
 
-from .classifier import Classifier
+from .classifier import Classifier, BinaryClassifier
 
 
 class Trainer(abc.ABC):
@@ -83,12 +83,12 @@ class Trainer(abc.ABC):
             #  - Use the train/test_epoch methods.
             #  - Save losses and accuracies in the lists above.
             # ====== YOUR CODE: ======
-            train_result = self.train_epoch(dl_train)
-            train_acc.append()
-            train_loss.append()
-            test_result = self.test_epoch(dl_test)
-            test_acc.append()
-            test_loss.append()
+            train_result = self.train_epoch(dl_train, **kw)
+            train_acc.append(train_result.accuracy)
+            train_loss += train_result.losses
+            test_result = self.test_epoch(dl_test, **kw)
+            test_acc.append(test_result.accuracy)
+            test_loss += test_result.losses
             # ========================
 
             # TODO:
@@ -99,11 +99,15 @@ class Trainer(abc.ABC):
             #    the checkpoints argument.
             if best_acc is None or test_result.accuracy > best_acc:
                 # ====== YOUR CODE: ======
-                self.save_checkpoint(checkpoints)
+                best_acc = test_result.accuracy
+                if checkpoints:
+                    self.save_checkpoint(checkpoints)
                 # ========================
             else:
                 # ====== YOUR CODE: ======
-                raise NotImplementedError()
+                epochs_without_improvement += 1
+                if epochs_without_improvement == early_stopping:
+                    return FitResult(actual_num_epochs, train_loss, train_acc, test_loss, test_acc)
                 # ========================
 
         return FitResult(actual_num_epochs, train_loss, train_acc, test_loss, test_acc)
@@ -262,7 +266,16 @@ class ClassifierTrainer(Trainer):
         #  - Update parameters
         #  - Classify and calculate number of correct predictions
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        X = X.view((X.shape[0], -1))
+        #y_prob = bc.predict_proba(X)
+        #y_hat = bc.classify(y_prob)
+        y_hat = self.model(X)
+        batch_loss = self.loss_fn(y_hat, y)
+        self.optimizer.zero_grad()
+        dout = batch_loss.backward()
+        #self.model.model.backward(dout)
+        self.optimizer.step()
+        num_correct = int((y == y_hat.argmax(dim=1)).sum().item())
         # ========================
 
         return BatchResult(batch_loss, num_correct)
@@ -282,7 +295,10 @@ class ClassifierTrainer(Trainer):
             #  - Forward pass
             #  - Calculate number of correct predictions
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+            X = X.view((X.shape[0], -1))
+            y_hat = self.model(X)
+            batch_loss = self.loss_fn(y_hat, y)
+            num_correct = int((y == y_hat.argmax(dim=1)).sum().item())
             # ========================
 
         return BatchResult(batch_loss, num_correct)

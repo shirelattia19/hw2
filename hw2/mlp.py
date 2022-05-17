@@ -32,9 +32,7 @@ class MLP(nn.Module):
     A general-purpose MLP.
     """
 
-    def __init__(
-        self, in_dim: int, dims: Sequence[int], nonlins: Sequence[Union[str, nn.Module]]
-    ):
+    def __init__(self, in_dim: int, dims: Sequence[int], nonlins: Sequence[Union[str, nn.Module]]):
         """
         :param in_dim: Input dimension.
         :param dims: Hidden dimensions, including output dimension.
@@ -44,6 +42,7 @@ class MLP(nn.Module):
             dict, or instances of nn.Module (e.g. an instance of nn.ReLU()).
             Length should match 'dims'.
         """
+        super().__init__()
         assert len(nonlins) == len(dims)
         self.in_dim = in_dim
         self.out_dim = dims[-1]
@@ -55,7 +54,23 @@ class MLP(nn.Module):
         #  - Either instantiate the activations based on their name or use the provided
         #    instances.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        layers = []
+        first_dim = in_dim
+        for dim, act in zip(dims, nonlins):
+            # layer.weight = torch.nn.Parameter(torch.randn(dim, first_dim))
+            # layer.bias = torch.nn.Parameter(torch.randn(dim))
+            layers.append(nn.Linear(first_dim, dim))
+            if act in ACTIVATIONS.keys():
+                function = ACTIVATIONS.get(act)
+                layers.append(function(**ACTIVATION_DEFAULT_KWARGS[act]))
+            else:
+                layers.append(act)
+            first_dim = dim
+
+        self.layers = nn.Sequential(*layers)
+
+
+
         # ========================
 
     def forward(self, x: Tensor) -> Tensor:
@@ -66,5 +81,12 @@ class MLP(nn.Module):
         # TODO: Implement the model's forward pass. Make sure the input and output
         #  shapes are as expected.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        assert x.shape[1] == self.in_dim
+        out = x
+
+        for layer in self.layers:
+            out = layer(out)
+
+        assert out.shape[1] == self.out_dim
+        return out
         # ========================
