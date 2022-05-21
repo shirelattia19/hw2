@@ -85,10 +85,10 @@ class Trainer(abc.ABC):
             # ====== YOUR CODE: ======
             train_result = self.train_epoch(dl_train, **kw)
             train_acc.append(train_result.accuracy)
-            train_loss += train_result.losses
+            train_loss.append(torch.mean(torch.Tensor(train_result.losses)))
             test_result = self.test_epoch(dl_test, **kw)
             test_acc.append(test_result.accuracy)
-            test_loss += test_result.losses
+            test_loss.append(torch.mean(torch.Tensor(test_result.losses)))
             # ========================
 
             # TODO:
@@ -270,9 +270,10 @@ class ClassifierTrainer(Trainer):
         #y_prob = bc.predict_proba(X)
         #y_hat = bc.classify(y_prob)
         y_hat = self.model(X)
-        batch_loss = self.loss_fn(y_hat, y)
         self.optimizer.zero_grad()
-        dout = batch_loss.backward()
+        batch_loss = self.loss_fn(y_hat, y)
+        batch_loss.backward()
+
         #self.model.model.backward(dout)
         self.optimizer.step()
         num_correct = int((y == y_hat.argmax(dim=1)).sum().item())

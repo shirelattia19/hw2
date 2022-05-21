@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
@@ -23,6 +24,7 @@ class Classifier(nn.Module, ABC):
         # TODO: Add any additional initializations here, if you need them.
         # ====== YOUR CODE: ======
         self.num_classes = [*self.model.parameters()][-1].data.shape[0]
+        self.threshold = 0.5
         # ========================
 
     def forward(self, x: Tensor) -> Tensor:
@@ -185,7 +187,20 @@ def plot_decision_boundary_2d(
     #  plot a contour map.
     x1_grid, x2_grid, y_hat = None, None, None
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    # Set min and max values and give it some padding
+    x_min, x_max = x[:, 0].min() - .5, x[:, 0].max() + .5
+    y_min, y_max = x[:, 1].min() - .5, x[:, 1].max() + .5
+    h = 0.01
+    # Generate a grid of points with distance h between them
+    xx = torch.arange(x_min, x_max, h)
+    yy = torch.arange(y_min, y_max, h)
+    x1_grid, x2_grid = torch.meshgrid(xx, yy)
+    r1, r2 = x1_grid.flatten(), x2_grid.flatten()
+    r1, r2 = r1.reshape((len(r1), 1)), r2.reshape((len(r2), 1))
+    grid = torch.hstack((r1, r2))
+    # Predict the function value for the whole gid
+    y_hat = classifier.classify(grid)
+    y_hat = y_hat.reshape(x1_grid.shape)
     # ========================
 
     # Plot the decision boundary as a filled contour
@@ -219,7 +234,12 @@ def select_roc_thresh(
     fpr, tpr, thresh = None, None, None
     optimal_theresh_idx, optimal_thresh = None, None
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    assert isinstance(classifier, BinaryClassifier)
+    predicted_proba = classifier.predict_proba(x).detach().numpy()
+    fpr, tpr, thresh = roc_curve(y, predicted_proba[:, classifier.positive_class])
+    optimal_thresh = sorted(list(zip(np.abs(tpr - fpr), thresh)), key=lambda i: i[0], reverse=True)[0][1]
+    optimal_thresh_idx = np.where(thresh == optimal_thresh)[0][0]
+
     # ========================
 
     if plot:

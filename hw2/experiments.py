@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 
 from cs236781.train_results import FitResult
+from hw2.answers import part3_arch_hp, part3_optim_hp
 
 from .cnn import CNN, ResNet, YourCNN
 from .mlp import MLP
@@ -46,7 +47,40 @@ def mlp_experiment(
     #  Note: use print_every=0, verbose=False, plot=False where relevant to prevent
     #  output from this function.
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+
+    # Define hyperparameters
+    hp_arch = dict(
+        n_layers=depth,
+        hidden_dims=width,
+        activation='tanh',
+        out_activation='logsoftmax',
+    )
+    hp_optim = dict(lr=0.1, weight_decay=1e-3, momentum=0.9, loss_fn=torch.nn.CrossEntropyLoss())
+
+    # Define Model
+    model = BinaryClassifier(
+        model=MLP(
+            in_dim=2,
+            dims=[*[hp_arch['hidden_dims'], ] * hp_arch['n_layers'], 2],
+            nonlins=[*[hp_arch['activation'], ] * hp_arch['n_layers'], hp_arch['out_activation']]
+        ),
+        threshold=0.5,
+    )
+    loss_fn = hp_optim.pop('loss_fn')
+    optimizer = torch.optim.SGD(params=model.parameters(), **hp_optim)
+    trainer = ClassifierTrainer(model, loss_fn, optimizer)
+
+    # Train using our ClassifierTrainer
+    fit_result = trainer.fit(dl_train, dl_valid, num_epochs=n_epochs, print_every=100)
+    valid_acc = fit_result.test_acc[-1]
+
+    # threshold selection with Validation Set
+    thresh = select_roc_thresh(model, *dl_valid.dataset.tensors, plot=False)
+    trainer.threshold = thresh
+
+    test_result = trainer.test_epoch(dl_test)
+    test_acc = test_result.accuracy
+
     # ========================
     return model, thresh, valid_acc, test_acc
 
