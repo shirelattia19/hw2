@@ -85,10 +85,10 @@ class Trainer(abc.ABC):
             # ====== YOUR CODE: ======
             train_result = self.train_epoch(dl_train, **kw)
             train_acc.append(train_result.accuracy)
-            train_loss.append(torch.mean(torch.Tensor(train_result.losses)))
+            train_loss.append(torch.mean(torch.Tensor(train_result.losses)).item())
             test_result = self.test_epoch(dl_test, **kw)
             test_acc.append(test_result.accuracy)
-            test_loss.append(torch.mean(torch.Tensor(test_result.losses)))
+            test_loss.append(torch.mean(torch.Tensor(test_result.losses)).item())
             # ========================
 
             # TODO:
@@ -266,7 +266,7 @@ class ClassifierTrainer(Trainer):
         #  - Update parameters
         #  - Classify and calculate number of correct predictions
         # ====== YOUR CODE: ======
-        X = X.view((X.shape[0], -1))
+        #X = X.view((X.shape[0], -1))
         #y_prob = bc.predict_proba(X)
         #y_hat = bc.classify(y_prob)
         y_hat = self.model(X)
@@ -279,7 +279,7 @@ class ClassifierTrainer(Trainer):
         num_correct = int((y == y_hat.argmax(dim=1)).sum().item())
         # ========================
 
-        return BatchResult(batch_loss, num_correct)
+        return BatchResult(batch_loss.item(), num_correct)
 
     def test_batch(self, batch) -> BatchResult:
         X, y = batch
@@ -296,13 +296,13 @@ class ClassifierTrainer(Trainer):
             #  - Forward pass
             #  - Calculate number of correct predictions
             # ====== YOUR CODE: ======
-            X = X.view((X.shape[0], -1))
+            #X = X.view((X.shape[0], -1))
             y_hat = self.model(X)
             batch_loss = self.loss_fn(y_hat, y)
             num_correct = int((y == y_hat.argmax(dim=1)).sum().item())
             # ========================
 
-        return BatchResult(batch_loss, num_correct)
+        return BatchResult(batch_loss.item(), num_correct)
 
 
 class LayerTrainer(Trainer):

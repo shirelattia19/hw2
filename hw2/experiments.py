@@ -28,12 +28,12 @@ MODEL_TYPES = {
 
 
 def mlp_experiment(
-    depth: int,
-    width: int,
-    dl_train: DataLoader,
-    dl_valid: DataLoader,
-    dl_test: DataLoader,
-    n_epochs: int,
+        depth: int,
+        width: int,
+        dl_train: DataLoader,
+        dl_valid: DataLoader,
+        dl_test: DataLoader,
+        n_epochs: int,
 ):
     # TODO:
     #  - Create a BinaryClassifier model.
@@ -86,27 +86,27 @@ def mlp_experiment(
 
 
 def cnn_experiment(
-    run_name,
-    out_dir="./results",
-    seed=None,
-    device=None,
-    # Training params
-    bs_train=128,
-    bs_test=None,
-    batches=100,
-    epochs=100,
-    early_stopping=3,
-    checkpoints=None,
-    lr=1e-3,
-    reg=1e-3,
-    # Model params
-    filters_per_layer=[64],
-    layers_per_block=2,
-    pool_every=2,
-    hidden_dims=[1024],
-    model_type="cnn",
-    # You can add extra configuration for your experiments here
-    **kw,
+        run_name,
+        out_dir="./results",
+        seed=None,
+        device=None,
+        # Training params
+        bs_train=128,
+        bs_test=None,
+        batches=100,
+        epochs=100,
+        early_stopping=3,
+        checkpoints=None,
+        lr=1e-3,
+        reg=1e-3,
+        # Model params
+        filters_per_layer=[64],#K
+        layers_per_block=2,#L
+        pool_every=2,
+        hidden_dims=[1024],
+        model_type="cnn",
+        # You can add extra configuration for your experiments here
+        **kw,
 ):
     """
     Executes a single run of a Part3 experiment with a single configuration.
@@ -142,7 +142,46 @@ def cnn_experiment(
     #   for you automatically.
     fit_res = None
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+
+    # Define Hyperparameters
+    loss_fn = torch.nn.CrossEntropyLoss()
+    lr = 0.01
+    hidden_dims = [64]
+    channels = [item for sub in filters_per_layer for item in [sub] * layers_per_block]
+    kernel_size = 2
+    pooling_type = "max"
+    pooling_params = dict(kernel_size=2)
+    activation_type = "tanh"
+    activation_params = dict()
+    dropout = 0.2
+    conv_params = dict(kernel_size=3, stride=1, padding=1)
+    weight_decay = 1e-3
+    momentum = 0.9
+
+    # Prepare Data
+    dl_train = torch.utils.data.DataLoader(ds_train, bs_train, shuffle=True)
+    dl_test = torch.utils.data.DataLoader(ds_test, bs_test, shuffle=False)
+    x0, _ = ds_train[0]
+    in_size = x0.shape
+    num_classes = 10
+
+    # Define Model
+    model_params = dict(
+        in_size=in_size, out_classes=num_classes, channels=channels,
+        pool_every=pool_every, hidden_dims=hidden_dims, conv_params=conv_params,
+        activation_type=activation_type, activation_params=activation_params,
+        pooling_type=pooling_type, pooling_params=pooling_params,
+        batchnorm=True, dropout=dropout,
+        bottleneck=False
+    )
+    model = ArgMaxClassifier(model=model_cls(**model_params))
+    loss_fn = torch.nn.CrossEntropyLoss()
+    hp_optim = dict(lr=lr, weight_decay=weight_decay, momentum=momentum, **kw)
+    optimizer = torch.optim.SGD(params=model.parameters(), **hp_optim)
+    trainer = ClassifierTrainer(model, loss_fn, optimizer)
+
+    # Training
+    fit_res = trainer.fit(dl_train, dl_test, epochs, checkpoints, early_stopping, **kw)
     # ========================
 
     save_experiment(run_name, out_dir, cfg, fit_res)

@@ -99,7 +99,8 @@ class ArgMaxClassifier(Classifier):
         #  Classify each sample to one of C classes based on the highest score.
         #  Output should be a (N,) integer tensor.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        y_hat = y_proba.argmax(1)
+        return y_hat
         # ========================
 
 
